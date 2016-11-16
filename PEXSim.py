@@ -116,7 +116,9 @@ def split_top_module_name_forTerminal(term):
 
 
 def transform_nets_name_into_spectre_netlist_convention(net_name):
-    return net_name.replace('/', r'\/').replace('<', r'\<').replace('>', r'\>')
+    replacements = {'/': r'\\/', '<': r'\\<', '>': r'\\>'}
+    return multireplace(net_name, replacements)
+    # return net_name.replace('/', r'\/').replace('<', r'\\<').replace('>', r'\\>')
 
 
 def parse_bus_net_name(bus):
