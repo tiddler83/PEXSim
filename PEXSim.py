@@ -89,7 +89,7 @@ def extract_all_devices_from_netlist(moduleList, PEXNetlistDirPath):
         with open(file, 'r') as fh:
             cont = fh.read()
         target = re.compile(r'X(.+?) \(')
-        res[e] = re.findall(target, cont)
+        res[e] = target.findall(cont)
         res[e] = set(map(lambda x: "X" + x, res[e]))
         res[e] = set(map(remove_backslash, res[e]))
         res[e] = set(map(remove_forwardslash, res[e]))
@@ -116,12 +116,12 @@ def split_top_module_name_forTerminal(term):
 
 
 def transform_nets_name_into_spectre_netlist_convention(net_name):
-    return net_name.replace('/', r'\/')
+    return net_name.replace('/', r'\/').replace('<', r'\<').replace('>', r'\>')
 
 
 def parse_bus_net_name(bus):
-    p = re.compile(re.compile(r'(.+?)<(\d+):(\d+)'))
-    s = re.match(p, bus)
+    p = re.compile(r'(.+?)<(\d+):(\d+)')
+    s = p.match(bus)
     net_name = s.group(1)
     first_num = int(s.group(2))
     sec_num = int(s.group(3))
@@ -170,19 +170,18 @@ def modifySaveInOceanScript(vList, iList, oceanScriptFileName):
     with open(oceanScriptFileName, 'r') as fh:
         cont = fh.read()
     cont = cont.replace('\r', '')
-    cont = re.sub(re.compile(r'save\((.+?)\)\n', re.DOTALL), '', cont, 0)
-    cont = re.sub(r'ocnxlOutputSignal\((.+?)\)\n', '', cont, 0)
-    cont = re.sub(r'ocnxlOutputTerminal\((.+?)\)\n', '', cont, 0)
+    r = re.compile(r'save\((.+?)\)\n' + r'|' + r'ocnxlOutputSignal\((.+?)\)\n' + r'|' + r'ocnxlOutputTerminal\((.+?)\)\n', re.DOTALL)
+    cont = r.sub('', cont, 0)
 
     cont = cont.split('\n')
-    contNew = ''
+    contNew = []
     for line in cont:
         if re.match(pTemp, line):
-            contNew = contNew + saveV + '\n' + saveI + '\n' + line + '\n' + ocnOutputV + ocnOutputI
+            contNew.append(saveV + '\n' + saveI + '\n' + line + '\n' + ocnOutputV + ocnOutputI)
         else:
-            contNew = contNew + line + '\n'
+            contNew.append(line)
     with open(oceanScriptFileName, 'w') as fh:
-        fh.write(contNew)
+        fh.write('\n'.join(contNew))
 
 
 def modifyTestBenchNetlistFileNameInOceanScript(testBenchNetlistFileName, oceanScriptFileName):
@@ -201,18 +200,6 @@ def groupNetTermNameAccToInst(net_list):
         else:
             res[e[0]].append(e[1])
     return res
-
-
-def extract_module_PEXnetlist_mapping(module_PEXnetlist_map_fileName):
-    with open(module_PEXnetlist_map_fileName, 'r') as fh:
-        cont = fh.read()
-    x = cont.split('\n')
-    mapping = dict()
-    for e in x:
-        a = e.split(' ')
-        mapping[a[0].strip()] = '\"' + a[1].strip() + '\"'
-    return mapping
-
 
 
 def parseParameterFile(fileName):
@@ -345,8 +332,12 @@ def modifyTestbenchNetlistFile(PEXNetlistDirPath, moduleName, testBenchNetlist_p
 
     with open(testBenchNetlist_pathFileName, 'r') as fh:
         cont = fh.read()
+    cont = cont.replace('\r', '')
+
     for i in range(len(includePathName)):
-        cont = re.sub(re.compile(r'subckt ' + moduleName[i] + r'(.+?)ends ' + moduleName[i] + r'\n',  re.DOTALL), 'include \"' + includePathName[i] + '\"\n', cont, 0)
+        p = re.compile(r'subckt ' + moduleName[i] + r'(.+?)ends ' + moduleName[i] + r'\n',  re.DOTALL)
+        cont = p.sub('include \"' + includePathName[i] + '\"\n', cont,0)
+
     with open(testBenchNetlist_pathFileName, 'w') as fh:
         fh.write(cont)
 
