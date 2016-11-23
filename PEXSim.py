@@ -156,6 +156,8 @@ def conv_term_name_helper(name):
         return "C" + name
     elif name.startswith('R'):
         return "R" + name
+    elif name.startswith('t'):
+        return "D" + name
 
 
 import fileinput
