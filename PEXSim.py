@@ -118,7 +118,11 @@ def split_top_module_name_forTerminal(term):
 def transform_nets_name_into_spectre_netlist_convention(net_name):
     replacements = {'/': r'\\/', '<': r'\\<', '>': r'\\>'}
     return multireplace(net_name, replacements)
-    # return net_name.replace('/', r'\/').replace('<', r'\\<').replace('>', r'\\>')
+
+
+def transform_nets_name_into_spectre_netlist_conventionForADEXL(net_name):
+    replacements = {'/': r'\/', '<': r'\<', '>': r'\>'}
+    return multireplace(net_name, replacements)
 
 
 def parse_bus_net_name(bus):
@@ -248,6 +252,44 @@ def parseParameterFile(fileName):
     return res
 
 
+def parseParameterFileForADEXL(fileName):
+    res = dict()
+    with open(fileName, 'r') as fh:
+        cont = fh.read()
+    cont = cont.replace('\r', '')
+    
+    p_savescsPath = re.compile(r'savescsPath(\s*){(.*?)}')
+    p_PEXNetlistDirPath = re.compile(r'PEXNetlistDirPath(\s*){(.*?)}')
+    p_saveV = re.compile(r'saveV(\s*){(.*?)}', re.DOTALL)
+    p_saveI = re.compile(r'saveI(\s*){(.*?)}', re.DOTALL)
+    p_instance_module_mapping = re.compile(r'instance_module_mapping(\s*){(.*?)}', re.DOTALL)
+
+    res['savescsPath'] = p_savescsPath.search(cont).group(2)
+    res['savescsPath'] = ''.join(res['savescsPath'].split())
+    
+    res['PEXNetlistDirPath'] = p_PEXNetlistDirPath.search(cont).group(2).strip()
+
+    res['instance_module_mapping'] = ''.join(p_instance_module_mapping.search(cont).group(2).split())
+    res['instance_module_mapping'] = parseInstanceModuleMapping(res['instance_module_mapping'])
+
+    res['moduleName'] = list(set(res['instance_module_mapping'].values()))
+
+    res['saveV'] = ''.join(p_saveV.search(cont).group(2).split())
+    res['saveV'] = parseNetString(res['saveV'])
+
+    res['saveI'] = ''.join(p_saveI.search(cont).group(2).split())
+    res['saveI'] = parseTermString(res['saveI'])
+
+    res['saveV'] = list(map(split_top_module_name,  res['saveV']))
+    res['saveI'] = list(map(conv_term_name, res['saveI']))
+    res['saveI'] = list(map(split_top_module_name_forTerminal, res['saveI']))
+
+    res['saveV'] = groupNetTermNameAccToInst(res['saveV'])
+    res['saveI'] = groupNetTermNameAccToInst(res['saveI'])
+
+    return res
+
+
 def multireplace(string, replacements):
     """
     Given a string and a replacement map, it returns the replaced string.
@@ -329,6 +371,41 @@ def termsToProbeInSpectreFormat(termsToProbe, allDevices, instance_module_mappin
     return iList
 
 
+
+def netsToProbeInSpectreFormatForADEXL(netsToProbe, allNets, instance_module_mapping):
+    saveV = {}
+    for (k,v) in netsToProbe.items():
+        if k != '':
+            saveV[k] = find_all_related_nets_for_aListOfNets(netsToProbe[k], allNets[instance_module_mapping[k]])
+            saveV[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL, saveV[k]))
+            saveV[k] = list(map(lambda x: k + ".N_"+x, saveV[k]))
+        else:
+            saveV[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL,netsToProbe[k]))
+
+    vList = []
+    for (k, v) in saveV.items():
+        vList = vList + v
+
+    return vList
+
+
+def termsToProbeInSpectreFormatForADEXL(termsToProbe, allDevices, instance_module_mapping):
+    saveI = {}
+    for (k, v) in termsToProbe.items():
+        if k != '':
+            saveI[k] = find_all_related_terminal_for_aListOfDevices(termsToProbe[k], allDevices[instance_module_mapping[k]])
+            saveI[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL, saveI[k]))
+            saveI[k] = list(map(lambda x: k + "." + x, saveI[k]))
+        else:
+            saveI[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL, termsToProbe[k]))
+
+    iList = []
+    for (k, v) in saveI.items():
+        iList = iList + v
+
+    return iList
+
+
 def modifyTestbenchNetlistFile(PEXNetlistDirPath, moduleName, testBenchNetlist_pathFileName):
     includePathName = list(map(lambda x: PEXNetlistDirPath + '/' + x + '.spectre.pex.netlist', moduleName))
     for i in range(len(includePathName)):
@@ -345,3 +422,7 @@ def modifyTestbenchNetlistFile(PEXNetlistDirPath, moduleName, testBenchNetlist_p
     with open(testBenchNetlist_pathFileName, 'w') as fh:
         fh.write(cont)
 
+def createSavescs(vList, iList, filePath):
+    x = 'save ' + ' \\\n'.join(vList) + ' \\\n' + ' \\\n'.join(iList)
+    with open(filePath + 'save.scs', 'w') as fh:
+        fh.write(x)
