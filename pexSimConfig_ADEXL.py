@@ -3,8 +3,8 @@ import os
 sys.path.append(os.getcwd())
 from PEXSim import *
 
-par = parseParameterFileForADEXL('parameterFileForPEXSimADEXL.txt')
-# par = parseParameterFile(sys.argv[1])
+# par = parseParameterFileForADEXL('parameterFileForPEXSimADEXL.txt')
+par = parseParameterFileForADEXL(sys.argv[1])
 
 allNets = extract_all_nets_name_from_netlist(par['moduleName'], par['PEXNetlistDirPath'])
 allDevices = extract_all_devices_from_netlist(par['moduleName'], par['PEXNetlistDirPath'])

@@ -1,14 +1,10 @@
 ; modify ONLY contents in {}
 
 ; put the path of the directory where you want to save save.scs inside {}
-savescsPath {./}
-
-; put the names of the cells for which you want to use its PEX netlist, inside {}
-; if you have multiple cells, separate them with comma
-moduleName {top_v22_basedOnLayoutV11, DriverSym }
+savescsPath {/home/yxu_imicro/project/proj65Lpe/cadence/GaN_layoutTest/top22_tb}
 
 ; put the path to the directory where you save the extracted netlist inside {}
-PEXNetlistDirPath { ./ }
+PEXNetlistDirPath { /home/yxu_imicro/project/proj65Lpe/drclvs/runDir }
 
 ; specify the instance's name and its corresponding cell name inside {}
 ; separate instance name and cell name with ":", and separate mapping groups with ","

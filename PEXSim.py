@@ -424,5 +424,7 @@ def modifyTestbenchNetlistFile(PEXNetlistDirPath, moduleName, testBenchNetlist_p
 
 def createSavescs(vList, iList, filePath):
     x = 'save ' + ' \\\n'.join(vList) + ' \\\n' + ' \\\n'.join(iList)
-    with open(filePath + 'save.scs', 'w') as fh:
+    fileName =  filePath + '/save.scs'
+    fileName = fileName.replace('//', '/')
+    with open(fileName, 'w') as fh:
         fh.write(x)
