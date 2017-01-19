@@ -1,66 +1,66 @@
 import re
 
 
-def remove_backslash(e):
+def __remove_backslash(e):
     x = e.replace(r'\<', '<')
     x = x.replace(r'\>', '>')
     return x
 
 
-def remove_forwardslash(e):
+def __remove_forwardslash(e):
     x = e.replace('\\', '')
     return x
 
 
-def net_related_q(net_name0, net_name1):
-    return re.match(conv_net_name(net_name0) + r'_(.+)', net_name1)
+def __net_related_q(net_name0, net_name1):
+    return re.match(__conv_net_name(net_name0) + r'_(.+)', net_name1)
 
 
-def conv_net_name(netName):
+def __conv_net_name(netName):
     x = netName.split('/')
     if len(x) > 1:
         x[0:-1] = list(map(lambda x: "X" + x, x[0:-1]))
     return '/'.join(x)
 
 
-def device_related_q(device0, device1):
+def __device_related_q(device0, device1):
     return re.match(device0, device1)
 
 
-def find_all_related_nets(net_name, nets_set):
+def __find_all_related_nets(net_name, nets_set):
     res = []
     for e in nets_set:
-        if net_related_q(net_name, e):
+        if __net_related_q(net_name, e):
             res.append(e)
     return res
 
 
-def splitDeviceAndTerminalName(terminal_name):
+def __splitDeviceAndTerminalName(terminal_name):
     return terminal_name.split(":")
 
 
-def find_all_related_terminal(terminal_name, device_set):
-    [deviceName, terminalName] = splitDeviceAndTerminalName(terminal_name)
+def __find_all_related_terminal(terminal_name, device_set):
+    [deviceName, terminalName] = __splitDeviceAndTerminalName(terminal_name)
     res = []
     for e in device_set:
-        if device_related_q(deviceName, e):
+        if __device_related_q(deviceName, e):
             res.append(e + ":" + terminalName)
     return res
 
 
-def find_all_related_nets_for_aListOfNets(net_list_to_be_probed, net_set):
+def __find_all_related_nets_for_aListOfNets(net_list_to_be_probed, net_set):
     res = []
     for e in net_list_to_be_probed:
-        f = find_all_related_nets(e, net_set)
+        f = __find_all_related_nets(e, net_set)
         res += f
         net_set -= set(f)
     return res
 
 
-def find_all_related_terminal_for_aListOfDevices(terminal_list_to_be_probed, device_set):
+def __find_all_related_terminal_for_aListOfDevices(terminal_list_to_be_probed, device_set):
     res = []
     for e in terminal_list_to_be_probed:
-        f = find_all_related_terminal(e, device_set)
+        f = __find_all_related_terminal(e, device_set)
         res += f
         device_set -= set(f)
     return res
@@ -69,40 +69,50 @@ def find_all_related_terminal_for_aListOfDevices(terminal_list_to_be_probed, dev
 def extract_all_nets_name_from_netlist(moduleList, PEXNetlistDirPath):
     res = {}
     for e in moduleList:
-        file = PEXNetlistDirPath + '/' + e + '.spectre.pex.netlist'
-        file = file.replace('//', '/')
+        file = __netlistFileName(e, PEXNetlistDirPath)
         with open(file, 'r') as fh:
             cont = fh.read()
-        target = re.compile(r'N_(.+?) ')
+        target = re.compile(r'N_(.+?)[\s)]')
         res[e] = re.findall(target, cont)
         res[e] = set(res[e])
-        res[e] = set(map(remove_backslash, res[e]))
-        res[e] = set(map(remove_forwardslash, res[e]))
+        res[e] = set(map(__remove_backslash, res[e]))
+        res[e] = set(map(__remove_forwardslash, res[e]))
     return res
 
 
 def extract_all_devices_from_netlist(moduleList, PEXNetlistDirPath):
     res = {}
     for e in moduleList:
-        file = PEXNetlistDirPath + '/' + e + '.spectre.pex.netlist'
-        file = file.replace('//', '/')
+        file = __netlistFileName(e, PEXNetlistDirPath)
         with open(file, 'r') as fh:
             cont = fh.read()
         target = re.compile(r'X(.+?) \(')
         res[e] = target.findall(cont)
         res[e] = set(map(lambda x: "X" + x, res[e]))
-        res[e] = set(map(remove_backslash, res[e]))
-        res[e] = set(map(remove_forwardslash, res[e]))
+        res[e] = set(map(__remove_backslash, res[e]))
+        res[e] = set(map(__remove_forwardslash, res[e]))
     return res
 
 
-def removeDupInList(seq):
+def __netlistFileName(moduleName, PEXNetlistDirPath):
+    from os.path import isfile
+    file = PEXNetlistDirPath + '/' + moduleName
+    file = file.replace('//', '/')
+    if isfile(file + '.spectre.pex.netlist'):
+        return file + '.spectre.pex.netlist'
+    elif isfile(file + '.pex.netlist'):
+        return file + '.pex.netlist'
+    else:
+        return None
+
+
+def __removeDupInList(seq):
     seen = set()
     seen_add = seen.add
     return [x for x in seq if not (x in seen or seen_add(x))]
 
 
-def split_top_module_name(net):
+def __split_top_module_name(net):
     x = net.split('/', 2)
     if len(x)>2:
         return (x[1], x[2])
@@ -110,22 +120,22 @@ def split_top_module_name(net):
         return (x[0], x[1])
 
 
-def split_top_module_name_forTerminal(term):
+def __split_top_module_name_forTerminal(term):
     x = term.split('/', 1)
     return (x[0], x[1])
 
 
-def transform_nets_name_into_spectre_netlist_convention(net_name):
-    replacements = {'/': r'\\/', '<': r'\\<', '>': r'\\>'}
-    return multireplace(net_name, replacements)
+def __transform_nets_name_into_spectre_netlist_convention(net_name):
+    replacements = {'/': r'\\/', '<': r'\\<', '>': r'\\>', '+': r'\\+', '-': r'\\-'}
+    return __multireplace(net_name, replacements)
 
 
-def transform_nets_name_into_spectre_netlist_conventionForADEXL(net_name):
-    replacements = {'/': r'\/', '<': r'\<', '>': r'\>'}
-    return multireplace(net_name, replacements)
+def __transform_nets_name_into_spectre_netlist_conventionForADEXL(net_name):
+    replacements = {'/': r'\/', '<': r'\<', '>': r'\>', '+': r'\+', '-': r'\-'}
+    return __multireplace(net_name, replacements)
+    # return re.escape(net_name)
 
-
-def parse_bus_net_name(bus):
+def __parse_bus_net_name(bus):
     p = re.compile(r'(.+?)<(\d+):(\d+)')
     s = p.match(bus)
     net_name = s.group(1)
@@ -138,20 +148,18 @@ def parse_bus_net_name(bus):
     return res
 
 
-termName = {'D': 'd', 'G': 'g', 'S': 's', 'B': 'b'}
-
-
-def conv_term_name(term):
+def __conv_term_name(term):
+    termName = {'D': 'd', 'G': 'g', 'S': 's', 'B': 'b'}
     x = term.split('/')
     if len(x) > 3:
-        x = [x[1]] + list(map(conv_term_name_helper, x[2:-1])) + [termName.get(x[-1], x[-1])]
+        x = [x[1]] + list(map(__conv_term_name_helper, x[2:-1])) + [termName.get(x[-1], x[-1])]
         x[1] = "X" + x[1]
         return '/'.join(x[:-1]) + ':' + x[-1]
     elif len(x) == 3:
         return '/' + x[1] + ':' + x[2]
 
 
-def conv_term_name_helper(name):
+def __conv_term_name_helper(name):
     if name.startswith('I'):
         return "X" + name
     elif name.startswith('T'):
@@ -165,6 +173,8 @@ def conv_term_name_helper(name):
 
 
 import fileinput
+
+
 def modifySaveInOceanScript(vList, iList, oceanScriptFileName):
     pTemp = re.compile(r'temp\((.+?)\)')
     vList1 = list(map(lambda x: "\"" + x + "\" ", vList))
@@ -200,7 +210,7 @@ def modifyTestBenchNetlistFileNameInOceanScript(testBenchNetlistFileName, oceanS
             print(line.rstrip())
 
 
-def groupNetTermNameAccToInst(net_list):
+def __groupNetTermNameAccToInst(net_list):
     res = {}
     for e in net_list:
         if e[0] not in res:
@@ -216,81 +226,140 @@ def parseParameterFile(fileName):
         cont = fh.read()
     cont = cont.replace('\r', '')
 
-    p_testBenchNetlist_pathFileName = re.compile(r'testBenchNetlist_pathFileName(\s*){(.*?)}')
-    p_oceanScript_toBeModified_pathFileName = re.compile(r'oceanScript_toBeModified_pathFileName(\s*){(.*?)}')
-    p_moduleName =  re.compile(r'moduleName(\s*){(.*?)}', re.DOTALL)
-    p_PEXNetlistDirPath = re.compile(r'PEXNetlistDirPath(\s*){(.*?)}')
-    p_saveV = re.compile(r'saveV(\s*){(.*?)}', re.DOTALL)
-    p_saveI = re.compile(r'saveI(\s*){(.*?)}', re.DOTALL)
-    p_instance_module_mapping = re.compile(r'instance_module_mapping(\s*){(.*?)}', re.DOTALL)
-
-    res['testBenchNetlist_pathFileName'] = p_testBenchNetlist_pathFileName.search(cont).group(2).strip()
-
-    res['oceanScript_toBeModified_pathFileName'] = p_oceanScript_toBeModified_pathFileName.search(cont).group(2).strip()
-
-    res['moduleName'] = p_moduleName.search(cont).group(2)
-    res['moduleName'] = ''.join(res['moduleName'].split()).split(',')
-
-    res['PEXNetlistDirPath'] = p_PEXNetlistDirPath.search(cont).group(2).strip()
-
-    res['instance_module_mapping'] = ''.join(p_instance_module_mapping.search(cont).group(2).split())
-    res['instance_module_mapping'] = parseInstanceModuleMapping(res['instance_module_mapping'])
-
-    res['saveV'] = ''.join(p_saveV.search(cont).group(2).split())
-    res['saveV'] = parseNetString(res['saveV'])
-
-    res['saveI'] = ''.join(p_saveI.search(cont).group(2).split())
-    res['saveI'] = parseTermString(res['saveI'])
-
-    res['saveV'] = list(map(split_top_module_name,  res['saveV']))
-    res['saveI'] = list(map(conv_term_name, res['saveI']))
-    res['saveI'] = list(map(split_top_module_name_forTerminal, res['saveI']))
-
-    res['saveV'] = groupNetTermNameAccToInst(res['saveV'])
-    res['saveI'] = groupNetTermNameAccToInst(res['saveI'])
-
-    return res
-
-
-def parseParameterFileForADEXL(fileName):
-    res = dict()
-    with open(fileName, 'r') as fh:
-        cont = fh.read()
-    cont = cont.replace('\r', '')
-    
     p_savescsPath = re.compile(r'savescsPath(\s*){(.*?)}')
     p_PEXNetlistDirPath = re.compile(r'PEXNetlistDirPath(\s*){(.*?)}')
     p_saveV = re.compile(r'saveV(\s*){(.*?)}', re.DOTALL)
     p_saveI = re.compile(r'saveI(\s*){(.*?)}', re.DOTALL)
     p_instance_module_mapping = re.compile(r'instance_module_mapping(\s*){(.*?)}', re.DOTALL)
 
+    p_testBenchNetlist_pathFileName = re.compile(r'testBenchNetlist_pathFileName(\s*){(.*?)}')
+    p_oceanScript_toBeModified_pathFileName = re.compile(r'oceanScript_toBeModified_pathFileName(\s*){(.*?)}')
+
     res['savescsPath'] = p_savescsPath.search(cont).group(2)
     res['savescsPath'] = ''.join(res['savescsPath'].split())
-    
+    if p_testBenchNetlist_pathFileName.search(cont): res['testBenchNetlist_pathFileName'] = p_testBenchNetlist_pathFileName.search(cont).group(2).strip()
+    if p_oceanScript_toBeModified_pathFileName.search(cont): res['oceanScript_toBeModified_pathFileName'] = p_oceanScript_toBeModified_pathFileName.search(cont).group(2).strip()
+    res['instance_module_mapping'] = ''.join(p_instance_module_mapping.search(cont).group(2).split())
+    res['instance_module_mapping'] = __parseInstanceModuleMapping(res['instance_module_mapping'])
+    res['moduleName'] = list(set(res['instance_module_mapping'].values()))
     res['PEXNetlistDirPath'] = p_PEXNetlistDirPath.search(cont).group(2).strip()
 
-    res['instance_module_mapping'] = ''.join(p_instance_module_mapping.search(cont).group(2).split())
-    res['instance_module_mapping'] = parseInstanceModuleMapping(res['instance_module_mapping'])
+    res['saveV'] = p_saveV.search(cont).group(2)
+    if res['saveV'].strip() != '':
+        res['saveV'] = ''.join(res['saveV'].strip(',').split())
+        res['saveV'] = __parseNetString(res['saveV'])
+        res['saveV'] = list(map(__split_top_module_name,  res['saveV']))
+        res['saveV'] = __groupNetTermNameAccToInst(res['saveV'])
+    else:
+        res['saveV'] = {}
 
-    res['moduleName'] = list(set(res['instance_module_mapping'].values()))
-
-    res['saveV'] = ''.join(p_saveV.search(cont).group(2).split())
-    res['saveV'] = parseNetString(res['saveV'])
-
-    res['saveI'] = ''.join(p_saveI.search(cont).group(2).split())
-    res['saveI'] = parseTermString(res['saveI'])
-
-    res['saveV'] = list(map(split_top_module_name,  res['saveV']))
-    res['saveI'] = list(map(conv_term_name, res['saveI']))
-    res['saveI'] = list(map(split_top_module_name_forTerminal, res['saveI']))
-
-    res['saveV'] = groupNetTermNameAccToInst(res['saveV'])
-    res['saveI'] = groupNetTermNameAccToInst(res['saveI'])
+    res['saveI'] = p_saveI.search(cont).group(2)
+    if res['saveI'].strip() != '':
+        res['saveI'] = ''.join(res['saveI'].strip(',').split())
+        res['saveI'] = __parseTermString(res['saveI'])
+        res['saveI'] = list(map(__conv_term_name, res['saveI']))
+        res['saveI'] = list(map(__split_top_module_name_forTerminal, res['saveI']))
+        res['saveI'] = __groupNetTermNameAccToInst(res['saveI'])
+    else:
+        res['saveI'] = {}
 
     return res
 
 
-def multireplace(string, replacements):
+
+# def parseParameterFile(fileName):
+#     res = dict()
+#     with open(fileName, 'r') as fh:
+#         cont = fh.read()
+#     cont = cont.replace('\r', '')
+#
+#     p_testBenchNetlist_pathFileName = re.compile(r'testBenchNetlist_pathFileName(\s*){(.*?)}')
+#     p_oceanScript_toBeModified_pathFileName = re.compile(r'oceanScript_toBeModified_pathFileName(\s*){(.*?)}')
+#     p_moduleName =  re.compile(r'moduleName(\s*){(.*?)}', re.DOTALL)
+#     p_PEXNetlistDirPath = re.compile(r'PEXNetlistDirPath(\s*){(.*?)}')
+#     p_saveV = re.compile(r'saveV(\s*){(.*?)}', re.DOTALL)
+#     p_saveI = re.compile(r'saveI(\s*){(.*?)}', re.DOTALL)
+#     p_instance_module_mapping = re.compile(r'instance_module_mapping(\s*){(.*?)}', re.DOTALL)
+#
+#     res['testBenchNetlist_pathFileName'] = p_testBenchNetlist_pathFileName.search(cont).group(2).strip()
+#
+#     res['oceanScript_toBeModified_pathFileName'] = p_oceanScript_toBeModified_pathFileName.search(cont).group(2).strip()
+#
+#     res['moduleName'] = p_moduleName.search(cont).group(2)
+#     res['moduleName'] = ''.join(res['moduleName'].split()).split(',')
+#
+#     res['PEXNetlistDirPath'] = p_PEXNetlistDirPath.search(cont).group(2).strip()
+#
+#     res['instance_module_mapping'] = ''.join(p_instance_module_mapping.search(cont).group(2).split())
+#     res['instance_module_mapping'] = __parseInstanceModuleMapping(res['instance_module_mapping'])
+#
+#     res['saveV'] = p_saveV.search(cont).group(2)
+#     if res['saveV'].strip() != '':
+#         res['saveV'] = ''.join(res['saveV'].strip(',').split())
+#         res['saveV'] = __parseNetString(res['saveV'])
+#         res['saveV'] = list(map(__split_top_module_name,  res['saveV']))
+#         res['saveV'] = __groupNetTermNameAccToInst(res['saveV'])
+#     else:
+#         res['saveV'] = {}
+#
+#     res['saveI'] = p_saveI.search(cont).group(2)
+#     if res['saveI'].strip() != '':
+#         res['saveI'] = ''.join(res['saveI'].strip(',').split())
+#         res['saveI'] = __parseTermString(res['saveI'])
+#         res['saveI'] = list(map(__conv_term_name, res['saveI']))
+#         res['saveI'] = list(map(__split_top_module_name_forTerminal, res['saveI']))
+#         res['saveI'] = __groupNetTermNameAccToInst(res['saveI'])
+#     else:
+#         res['saveI'] = {}
+#
+#     return res
+
+
+# def parseParameterFileForADEXL(fileName):
+#     res = dict()
+#     with open(fileName, 'r') as fh:
+#         cont = fh.read()
+#     cont = cont.replace('\r', '')
+#
+#     p_savescsPath = re.compile(r'savescsPath(\s*){(.*?)}')
+#     p_PEXNetlistDirPath = re.compile(r'PEXNetlistDirPath(\s*){(.*?)}')
+#     p_saveV = re.compile(r'saveV(\s*){(.*?)}', re.DOTALL)
+#     p_saveI = re.compile(r'saveI(\s*){(.*?)}', re.DOTALL)
+#     p_instance_module_mapping = re.compile(r'instance_module_mapping(\s*){(.*?)}', re.DOTALL)
+#
+#     res['savescsPath'] = p_savescsPath.search(cont).group(2)
+#     res['savescsPath'] = ''.join(res['savescsPath'].split())
+#
+#     res['PEXNetlistDirPath'] = p_PEXNetlistDirPath.search(cont).group(2).strip()
+#
+#     res['instance_module_mapping'] = ''.join(p_instance_module_mapping.search(cont).group(2).split())
+#     res['instance_module_mapping'] = __parseInstanceModuleMapping(res['instance_module_mapping'])
+#
+#     res['moduleName'] = list(set(res['instance_module_mapping'].values()))
+#
+#     res['saveV'] = p_saveV.search(cont).group(2)
+#     if res['saveV'].strip() != '':
+#         res['saveV'] = ''.join(res['saveV'].strip().strip(',').split())
+#         res['saveV'] = __parseNetString(res['saveV'])
+#         res['saveV'] = list(map(__split_top_module_name,  res['saveV']))
+#         res['saveV'] = __groupNetTermNameAccToInst(res['saveV'])
+#     else:
+#         res['saveV'] = {}
+#
+#     res['saveI'] = p_saveI.search(cont).group(2)
+#     if res['saveI'].strip() != '':
+#         res['saveI'] = ''.join(res['saveI'].strip().strip(',').split())
+#         res['saveI'] = __parseTermString(res['saveI'])
+#         res['saveI'] = list(map(__conv_term_name, res['saveI']))
+#         res['saveI'] = list(map(__split_top_module_name_forTerminal, res['saveI']))
+#         res['saveI'] = __groupNetTermNameAccToInst(res['saveI'])
+#     else:
+#         res['saveI'] = {}
+#
+#     return res
+
+
+def __multireplace(string, replacements):
     """
     Given a string and a replacement map, it returns the replaced string.
     :param str string: string to execute replacements on
@@ -309,26 +378,26 @@ def multireplace(string, replacements):
     return regexp.sub(lambda match: replacements[match.group(0)], string)
 
 
-def parseNetString(v):
+def __parseNetString(v):
     v = v.split(',')
     v_ = []
     for e in v:
         if e.find(":") != -1:
-            x = parse_bus_net_name(e)
+            x = __parse_bus_net_name(e)
             v_ = v_ + x
         else:
             v_.append(e)
-    v_ = removeDupInList(v_)
+    v_ = __removeDupInList(v_)
     return v_
 
 
-def parseTermString(i):
+def __parseTermString(i):
     i = i.split(',')
-    i = removeDupInList(i)
+    i = __removeDupInList(i)
     return i
 
 
-def parseInstanceModuleMapping(x):
+def __parseInstanceModuleMapping(x):
     res = {}
     x = x.split(',')
     for e in x:
@@ -341,8 +410,8 @@ def netsToProbeInSpectreFormat(netsToProbe, allNets, instance_module_mapping):
     saveV = {}
     for (k,v) in netsToProbe.items():
         if k != '':
-            saveV[k] = find_all_related_nets_for_aListOfNets(netsToProbe[k], allNets[instance_module_mapping[k]])
-            saveV[k] = list(map(transform_nets_name_into_spectre_netlist_convention, saveV[k]))
+            saveV[k] = __find_all_related_nets_for_aListOfNets(netsToProbe[k], allNets[instance_module_mapping[k]])
+            saveV[k] = list(map(__transform_nets_name_into_spectre_netlist_convention, saveV[k]))
             saveV[k] = list(map(lambda x: k + ".N_"+x, saveV[k]))
         else:
             saveV[k] = list(map(lambda x: "/" + x, netsToProbe[k]))
@@ -358,8 +427,8 @@ def termsToProbeInSpectreFormat(termsToProbe, allDevices, instance_module_mappin
     saveI = {}
     for (k, v) in termsToProbe.items():
         if k != '':
-            saveI[k] = find_all_related_terminal_for_aListOfDevices(termsToProbe[k], allDevices[instance_module_mapping[k]])
-            saveI[k] = list(map(transform_nets_name_into_spectre_netlist_convention, saveI[k]))
+            saveI[k] = __find_all_related_terminal_for_aListOfDevices(termsToProbe[k], allDevices[instance_module_mapping[k]])
+            saveI[k] = list(map(__transform_nets_name_into_spectre_netlist_convention, saveI[k]))
             saveI[k] = list(map(lambda x: k + "." + x, saveI[k]))
         else:
             saveI[k] = list(map(lambda x: "/" + x, termsToProbe[k]))
@@ -376,11 +445,11 @@ def netsToProbeInSpectreFormatForADEXL(netsToProbe, allNets, instance_module_map
     saveV = {}
     for (k,v) in netsToProbe.items():
         if k != '':
-            saveV[k] = find_all_related_nets_for_aListOfNets(netsToProbe[k], allNets[instance_module_mapping[k]])
-            saveV[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL, saveV[k]))
+            saveV[k] = __find_all_related_nets_for_aListOfNets(netsToProbe[k], allNets[instance_module_mapping[k]])
+            saveV[k] = list(map(__transform_nets_name_into_spectre_netlist_conventionForADEXL, saveV[k]))
             saveV[k] = list(map(lambda x: k + ".N_"+x, saveV[k]))
         else:
-            saveV[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL,netsToProbe[k]))
+            saveV[k] = list(map(__transform_nets_name_into_spectre_netlist_conventionForADEXL,netsToProbe[k]))
 
     vList = []
     for (k, v) in saveV.items():
@@ -393,11 +462,11 @@ def termsToProbeInSpectreFormatForADEXL(termsToProbe, allDevices, instance_modul
     saveI = {}
     for (k, v) in termsToProbe.items():
         if k != '':
-            saveI[k] = find_all_related_terminal_for_aListOfDevices(termsToProbe[k], allDevices[instance_module_mapping[k]])
-            saveI[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL, saveI[k]))
+            saveI[k] = __find_all_related_terminal_for_aListOfDevices(termsToProbe[k], allDevices[instance_module_mapping[k]])
+            saveI[k] = list(map(__transform_nets_name_into_spectre_netlist_conventionForADEXL, saveI[k]))
             saveI[k] = list(map(lambda x: k + "." + x, saveI[k]))
         else:
-            saveI[k] = list(map(transform_nets_name_into_spectre_netlist_conventionForADEXL, termsToProbe[k]))
+            saveI[k] = list(map(__transform_nets_name_into_spectre_netlist_conventionForADEXL, termsToProbe[k]))
 
     iList = []
     for (k, v) in saveI.items():
@@ -407,7 +476,7 @@ def termsToProbeInSpectreFormatForADEXL(termsToProbe, allDevices, instance_modul
 
 
 def modifyTestbenchNetlistFile(PEXNetlistDirPath, moduleName, testBenchNetlist_pathFileName):
-    includePathName = list(map(lambda x: PEXNetlistDirPath + '/' + x + '.spectre.pex.netlist', moduleName))
+    includePathName = list(map(lambda x: __netlistFileName(x, PEXNetlistDirPath), moduleName))
     for i in range(len(includePathName)):
         includePathName[i] = includePathName[i].replace('//', '/')
 
@@ -423,7 +492,14 @@ def modifyTestbenchNetlistFile(PEXNetlistDirPath, moduleName, testBenchNetlist_p
         fh.write(cont)
 
 def createSavescs(vList, iList, filePath):
-    x = 'save ' + ' \\\n'.join(vList) + ' \\\n' + ' \\\n'.join(iList)
+    if len(vList) != 0:
+        x = 'save ' + ' \\\n'.join(vList)
+    else:
+        x = ''
+
+    if len(iList) != 0:
+        x = x + '\n' + 'save ' + ' \\\n'.join(iList)
+
     fileName =  filePath + '/save.scs'
     fileName = fileName.replace('//', '/')
     with open(fileName, 'w') as fh:

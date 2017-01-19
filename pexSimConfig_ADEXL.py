@@ -3,7 +3,7 @@ import os
 sys.path.append(os.getcwd())
 from PEXSim import *
 
-# par = parseParameterFileForADEXL('parameterFileForPEXSimADEXL.txt')
+# par = parseParameterFile('parameterFileForPEXSimADEXL_chip_GaNPA_v5_tb')
 par = parseParameterFileForADEXL(sys.argv[1])
 
 allNets = extract_all_nets_name_from_netlist(par['moduleName'], par['PEXNetlistDirPath'])
